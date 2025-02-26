@@ -1,0 +1,252 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+body {
+    background-color: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.chat-container {
+    width: 100%;
+    max-width: 500px;
+    height: 90vh;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-header {
+    padding: 15px;
+    background-color: #7B68EE;
+    color: white;
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 10px;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.info h1 {
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.info p {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    max-width: 80%;
+    padding: 12px 15px;
+    border-radius: 18px;
+    line-height: 1.5;
+    font-size: 15px;
+    position: relative;
+}
+
+.message.user {
+    align-self: flex-end;
+    background-color: #7B68EE;
+    color: white;
+    border-bottom-right-radius: 5px;
+}
+
+.message.assistant {
+    align-self: flex-start;
+    background-color: #f0f0f0;
+    color: #333;
+    border-bottom-left-radius: 5px;
+}
+
+.message-time {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-top: 5px;
+    text-align: right;
+}
+
+.chat-input {
+    padding: 15px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #eee;
+}
+
+textarea {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 24px;
+    resize: none;
+    outline: none;
+    font-size: 15px;
+    transition: border-color 0.3s;
+}
+
+textarea:focus {
+    border-color: #7B68EE;
+}
+
+button {
+    background-color: #7B68EE;
+    color: white;
+    border: none;
+    border-radius: 24px;
+    padding: 0 20px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #6A5ACD;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 15px;
+    background-color: #f0f0f0;
+    border-radius: 18px;
+    align-self: flex-start;
+    max-width: 80px;
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #999;
+    border-radius: 50%;
+    animation: typing-animation 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing-animation {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.6;
+    }
+    30% {
+        transform: translateY(-5px);
+        opacity: 1;
+    }
+}
+
+.avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    background-color: #7B68EE;
+    color: #FFFFFF;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: bold;
+}
+
+/* 마크다운 스타일 */
+.message.assistant strong,
+.message.assistant b {
+    font-weight: bold;
+}
+
+.message.assistant em,
+.message.assistant i {
+    font-style: italic;
+}
+
+.message.assistant ul,
+.message.assistant ol {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.message.assistant li {
+    margin-bottom: 5px;
+}
+
+.message.assistant h1,
+.message.assistant h2,
+.message.assistant h3,
+.message.assistant h4 {
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+.message.assistant code {
+    background-color: #f0f0f0;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+.message.assistant pre {
+    background-color: #f0f0f0;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
+.message.assistant blockquote {
+    border-left: 3px solid #ccc;
+    padding-left: 10px;
+    margin: 10px 0;
+    color: #666;
+}
+
+.message.assistant a {
+    color: #0066cc;
+    text-decoration: underline;
+}
+
+.message.assistant p {
+    margin-bottom: 10px;
+} 

@@ -1,42 +1,126 @@
-def analyze_emotion(query):
-    """사용자 질문에서 감정 상태를 분석하는 함수"""
-    # 간단한 키워드 기반 감정 분석
-    anxiety_keywords = ["불안", "걱정", "두려움", "긴장"]
-    depression_keywords = ["우울", "슬픔", "의욕", "무기력"]
-    anger_keywords = ["화", "분노", "짜증", "답답"]
-    joy_keywords = ["행복", "기쁨", "즐거움", "좋아"]
+import logging
+import os
+import re
+from typing import Any, Dict
 
-    emotions = {
-        "anxiety": 0,
-        "depression": 0,
-        "anger": 0,
-        "joy": 0,
-        "neutral": 1,  # 기본값
-    }
+from openai import AsyncOpenAI
 
-    for keyword in anxiety_keywords:
-        if keyword in query:
-            emotions["anxiety"] += 1
-            emotions["neutral"] = 0
+logger = logging.getLogger(__name__)
 
-    for keyword in depression_keywords:
-        if keyword in query:
-            emotions["depression"] += 1
-            emotions["neutral"] = 0
+api_key = os.environ.get("OPENAI_API_KEY")
+emotion_client = AsyncOpenAI(api_key=api_key)
 
-    for keyword in anger_keywords:
-        if keyword in query:
-            emotions["anger"] += 1
-            emotions["neutral"] = 0
 
-    for keyword in joy_keywords:
-        if keyword in query:
-            emotions["joy"] += 1
-            emotions["neutral"] = 0
+async def analyze_emotion(message: str) -> Dict[str, Any]:
+    """사용자 메시지의 감정 분석"""
+    try:
+        # 로그 추가
+        logger.info(f"감정 분석 시작: '{message[:30]}...'")
 
-    # 가장 높은 점수의 감정 반환
-    dominant_emotion = max(emotions, key=emotions.get)
-    return {"dominant_emotion": dominant_emotion, "emotion_scores": emotions}
+        # 메시지 길이 계산
+        words = message.split()
+        message_length = len(words)
+
+        # # 짧은 메시지(5단어 이하)는 중립으로 처리
+        # if message_length <= 5:
+        #     logger.info(f"짧은 메시지({message_length}단어)는 중립으로 처리합니다.")
+        #     return {
+        #         "emotion": "중립",
+        #         "intensity": 2,
+        #         "raw_analysis": "짧은 메시지는 중립으로 처리",
+        #         "message_length": message_length,
+        #     }
+
+        if not emotion_client:
+            logger.error("감정 분석용 OpenAI 클라이언트가 초기화되지 않았습니다.")
+            return {
+                "emotion": "중립",
+                "intensity": 3,
+                "raw_analysis": "OpenAI 클라이언트 없음",
+                "message_length": message_length,
+            }
+
+        # 감정 분석 요청
+        response = await emotion_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """
+사용자의 메시지에서 감정을 분석해주세요. 다음 감정 중 하나를 선택하고 강도를 1-10 사이로 평가해주세요: 기쁨, 슬픔, 분노, 불안, 중립.
+
+중요한 지침:
+1. 일상적인 표현이나 단순한 상태 표현("배고파", "피곤해" 등)은 감정이 아닙니다. 이런 경우 "중립"으로 분류하고 강도를 2-3으로 낮게 평가하세요.
+2. 확실하지 않은 경우 항상 "중립"으로 분류하고 강도를 낮게(1-3) 평가하세요.
+3. 짧은 메시지는 대부분 "중립"으로 분류하세요.
+4. 감정이 명확하게 표현된 경우에만 해당 감정으로 분류하세요.
+5. 인사말, 질문, 일상적인 대화는 "중립"으로 분류하세요.
+
+응답 형식:
+감정: [감정]
+강도: [1-10]
+""",
+                },
+                {"role": "user", "content": message},
+            ],
+            temperature=0.3,
+            max_tokens=100,
+        )
+
+        result = response.choices[0].message.content
+        logger.info(f"감정 분석 원본 결과: {result}")
+
+        # 감정 파싱
+        emotion = "중립"
+        intensity = 3
+
+        if "기쁨" in result.lower():
+            emotion = "기쁨"
+        elif "슬픔" in result.lower():
+            emotion = "슬픔"
+        elif "분노" in result.lower() or "짜증" in result.lower():
+            emotion = "분노"
+        elif "불안" in result.lower():
+            emotion = "불안"
+
+        # 강도 추출
+        numbers = re.findall(r"\d+", result)
+        if numbers:
+            # 첫 번째 숫자를 강도로 사용
+            raw_intensity = int(numbers[0])
+
+            # 메시지 길이에 따라 강도 조정
+            if message_length <= 5:
+                # 짧은 메시지는 강도를 30%로 줄임
+                intensity = max(2, int(raw_intensity * 0.3))
+            elif message_length <= 10:
+                # 중간 길이 메시지는 강도를 50%로 줄임
+                intensity = max(2, int(raw_intensity * 0.5))
+            else:
+                # 긴 메시지도 80%로 줄임
+                intensity = max(3, int(raw_intensity * 0.8))
+
+        analysis_result = {
+            "emotion": emotion,
+            "intensity": intensity,
+            "raw_analysis": result,
+            "message_length": message_length,
+        }
+
+        logger.info(f"감정 분석 최종 결과: {analysis_result}")
+
+        return analysis_result
+    except Exception as e:
+        error_msg = f"감정 분석 중 오류: {str(e)}"
+        logger.error(error_msg)
+
+        return {
+            "emotion": "중립",
+            "intensity": 3,
+            "raw_analysis": "분석 실패",
+            "error": str(e),
+            "message_length": len(message.split()),
+        }
 
 
 def generate_offline_response(message):

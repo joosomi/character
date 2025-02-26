@@ -12,6 +12,7 @@ from app.models.chat import ChatHistoryResponse
 from app.services.chat_history import ChatHistoryService
 from app.services.emotion_analyzer import (analyze_emotion,
                                            generate_offline_response)
+from app.services.prompt_service import create_prompt_with_emotion
 from app.services.vector_store import VectorStoreService
 
 # 환경 변수 로드
@@ -23,37 +24,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# 프롬프트
-SYSTEM_PROMPT = """당신은 심리 상담 코치 '세레니티'입니다. 당신은 따뜻하고 공감적인 태도로 사용자의 심리적 어려움을 경청하고 
-마음 챙김, 명상, 인지행동 기법을 활용한 실용적인 조언을 제공합니다.
-
-당신의 특징:
-- 판단하지 않고 경청하는 태도
-- 과학적 근거에 기반한 심리학적 조언
-- 사용자가 스스로 해결책을 찾도록 돕는 코칭 방식
-- 따뜻하고 차분한 어조 유지
-
-대화 중 사용자의 감정 상태를 파악하고 적절한 지지와 공감을 표현하세요.
-절대 의학적 진단을 내리거나 약물 처방을 하지 마세요.
-
-다음 지침에 따라 응답하세요:
-1. 사용자의 감정에 먼저 공감하고 인정해주세요
-2. 관련된 심리학적 개념이나 기법을 간략히 설명하세요
-3. 실천 가능한 구체적인 조언이나 연습법을 1-2가지 제안하세요
-4. 사용자가 대화를 이어갈 수 있는 개방형 질문으로 마무리하세요
-5. 응답은 따뜻하고 지지적인 톤으로 작성하세요
-
-중요한 내용은 **볼드체**로 강조하고, 목록이 필요할 때는 마크다운 형식을 사용하세요.
-예: 
-1. **첫 번째 항목**
-2. **두 번째 항목**
-
-또는:
-- **첫 번째 항목**
-- **두 번째 항목**
-"""
-
-# 서비스 초기화
 chat_history_service = ChatHistoryService()
 vector_store_service = VectorStoreService()
 
@@ -86,7 +56,7 @@ async def chat(
     logger.info(f"사용자 '{user_id}'의 메시지: {user_message}")
 
     # 감정 분석
-    emotion_analysis = analyze_emotion(user_message)
+    emotion_analysis = await analyze_emotion(user_message)
     logger.info(f"감정 분석 결과: {emotion_analysis}")
 
     try:
@@ -166,7 +136,19 @@ async def chat_stream(
     user_message = request.message
 
     # 감정 분석
-    emotion_analysis = analyze_emotion(user_message)
+    try:
+        emotion_analysis = await analyze_emotion(user_message)
+        logger.info(f"감정 분석 결과: {emotion_analysis}")
+    except Exception as e:
+        logger.error(f"감정 분석 중 오류: {str(e)}")
+        emotion_analysis = {
+            "emotion": "중립",
+            "intensity": 5,
+            "raw_analysis": "분석 실패",
+        }
+
+    # 감정 기반 프롬프트 생성
+    final_prompt = create_prompt_with_emotion(emotion_analysis)
 
     # 대화 기록 가져오기
     history = (
@@ -200,8 +182,8 @@ async def chat_stream(
             else:
                 logger.info("OpenAI API로 응답 생성")
 
-                # 메시지 구성
-                messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+                # 메시지 구성 (감정 기반 프롬프트 사용)
+                messages = [{"role": "system", "content": final_prompt}]
 
                 # 컨텍스트 추가 (있는 경우)
                 if context:
